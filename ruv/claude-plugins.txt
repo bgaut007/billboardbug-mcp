@@ -1,0 +1,7 @@
+/plugin marketplace add ruvnet/ruvnet
+/plugin install ruvnet@ruvnet
+/plugin marketplace add ruvnet/ruflo
+/plugin install ruflo-core@ruflo
+/plugin install ruflo-swarm@ruflo
+/plugin install ruflo-rag-memory@ruflo
+/plugin install ruflo-security-audit@ruflo
