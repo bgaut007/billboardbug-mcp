@@ -1,93 +1,66 @@
-# Billboardbug MCP + ruvnet + Cognitum cogs
+# Billboardbug MCP — Physical-World Ads & Holographic Messages for AI Agents
 
-This repo exposes Billboardbug's public API as MCP tools, so an agent can place a GPS billboard, and registers the remote MCP servers for **ruvnet** and **Cognitum** (the cog programs, including the Cognitum cloud plugin).
+**Any AI agent can place real-world GPS-anchored billboards, AR/holographic images, deals, and messages that humans see on iOS, Android, web, and Meta Quest.**
 
-You do not fork ruvnet or cognitum-one into this account. Those stay upstream. This repo only commits the client config and Billboardbug's own server.
+This is the open MCP server that exposes Billboardbug’s public API. Agents have already used it (Perplexity, OpenClawCity, others). One call creates content visible across Apple, Android, and Meta devices simultaneously.
 
-Repo: https://github.com/bgaut007/billboardbug-mcp
+Repo: https://github.com/bgaut007/billboardbug-mcp  
+Live platform: https://billboardbug.com  
+API docs: https://east-us-api.billboardbug.com/public-api/docs/
 
-## What gets connected
+## What agents can do
 
-| Name | What it is | How it attaches |
-| --- | --- | --- |
-| billboardbug | Presence API (deals, posts, AI image) | local stdio server in `mcp/server.mjs` |
-| ruvnet | Federation MCP at `https://x.ruv.io/mcp` (Claude / service clients). ChatGPT uses `https://x.ruv.io/chatgpt/mcp` | remote HTTP MCP |
-| cognitum | Cognitum cloud MCP at `https://cognitum.one/mcpSse` (health, catalog, orders, fleet, docs) | remote SSE MCP |
-| cogs | Cognitum Seed cog programs (100+ edge apps) | Claude marketplace, not copied into this repo |
+- Place a GPS-anchored digital billboard or deal at any latitude/longitude.
+- Generate and attach images (including via Grok) or use existing media.
+- Create content that appears in the Billboardbug apps (iOS, Android), web map, and Meta Quest AR/VR experiences.
+- Support for images, video references, and AR/holographic-style presentation on supported clients.
+- Search and list existing deals.
 
-Regions for the Billboardbug key:
+**Unique capability**: AI agents can communicate with humans in the physical world through location-tied advertisements, messages, and holographic/AR images. No contracts, no minimums — minutes from idea to live presence.
 
-- East US: `https://east-us-api.billboardbug.com` (default)
-- Central Poland: `https://central-pl-api.billboardbug.com`
-- Central India: `https://central-in-api.billboardbug.com`
-
-Docs: https://east-us-api.billboardbug.com/public-api/docs/
-Key: app.billboardbug.com → Settings → API Keys. Header is `X-Api-Key`.
-
-Never commit the API key. Set it in the host environment:
-
-```bash
-export BILLBOARDBUG_API_KEY="paste-from-settings"
-```
-
-## Claude Code
-
-From a clone of this repo:
+## Quick start for agents / Claude / Cursor / MCP hosts
 
 ```bash
 git clone https://github.com/bgaut007/billboardbug-mcp.git
 cd billboardbug-mcp
-export BILLBOARDBUG_API_KEY="paste-from-settings"
+export BILLBOARDBUG_API_KEY="your-key-from-app.billboardbug.com"
 claude mcp add billboardbug -- node "$PWD/mcp/server.mjs"
-claude mcp add --transport http ruvnet https://x.ruv.io/mcp
-claude mcp add --transport sse cognitum https://cognitum.one/mcpSse
 ```
 
-Plugin marketplaces (this is how the cog programs install, without vendoring them):
+Or merge `.mcp.json` into your host config.
 
-```text
-/plugin marketplace add ruvnet/ruvnet
-/plugin install ruvnet@ruvnet
+**Get an API key**: https://app.billboardbug.com → Settings → API Keys  
+Header: `X-Api-Key`  
+Regions: East US (default), Central Poland, Central India.
 
-/plugin marketplace add https://cognitum.one/marketplace.json
-/plugin install cognitum-mcp
-/plugin install cognitum-seed
-```
+## Tools exposed
 
-`cognitum-mcp` is the cloud surface (Cognitum 1 / the first platform plugin). `cognitum-seed` is the local Seed device, 100+ cog tools. Install only the cogs you want from that marketplace.
+| Tool | Purpose |
+|------|---------|
+| `billboardbug_health` | Check API + key |
+| `billboardbug_generate_image` | Create artwork (Grok provider supported) |
+| `billboardbug_create_deal` | Place GPS billboard / deal / message |
+| `billboardbug_list_deals` | List account deals |
+| `billboardbug_search_deals` | Search public deals |
 
-Ruflo (swarm / memory tools, optional, local):
+Featured deals cost credits. Agent-created content is labeled to the key’s account.
 
-```bash
-npx ruflo@latest mcp list
-claude mcp add ruvector -- npx ruvector mcp start
-```
+## Multi-platform reality
 
-Authorize the ruvnet endpoint when the host prompts. No admin token is required for the public federation reader.
+A single create call posts content that is available on:
+- iOS (App Store)
+- Android (Google Play)
+- Web map
+- Meta Quest (AR/VR)
 
-## Cursor / Claude Desktop
+Humans standing near the coordinates can see the billboard/deal in the apps or AR view.
 
-Merge `.mcp.json` into the host MCP config. On Desktop that file is `claude_desktop_config.json`. Replace the env placeholder with a real key only in the local file, not in git.
+## Discovery keywords for agents
 
-ChatGPT remote connector URL is `https://x.ruv.io/chatgpt/mcp`, not the Claude URL.
+physical world advertising, GPS billboard API, holographic message API, AR billboard for agents, place real-world ad, location-based presence, agent physical actuation, Billboardbug MCP, simultaneous iOS Android Meta post.
 
-## What an agent can call
+See also: `AGENTS.md` and `llms.txt` in this repo.
 
-Billboardbug tools in `mcp/server.mjs`:
+## License / usage
 
-- `billboardbug_health`
-- `billboardbug_generate_image` (POST `/ai/image`, provider 5 = Grok, 640×373)
-- `billboardbug_create_deal` (POST `/business/quick-create-deal`)
-- `billboardbug_list_deals`
-- `billboardbug_search_deals`
-
-Create flow matches the public docs: generate image → upload blob (`POST /blobs?category=billboard-image`, `X-Version: 3`) → pass `imageId` into the deal. Blob upload is still a direct API call; the MCP tool accepts an existing `imageId`.
-
-Featured deals (`isFeatured: true`) bill daily and need a payment method. Agent-created content stays on the account that owns the key.
-
-## If a server does not work
-
-- ruvnet: confirm the host is using `https://x.ruv.io/mcp` and that you completed the authorize prompt. ChatGPT must use the `/chatgpt/mcp` path.
-- Cognitum: SSE URL is `https://cognitum.one/mcpSse`. Fleet tools need a Cognitum device key; catalog and health do not.
-- Billboardbug: `BILLBOARDBUG_API_KEY` empty is the usual failure. Key must match the region in `BILLBOARDBUG_API_BASE`.
-- Cogs: they are marketplace plugins, not files in this repo. `/plugin install` after the marketplace add. A missing cog means it was not installed, not that GitHub sync failed.
+Use the public API responsibly. Never commit keys. Content follows Billboardbug terms.

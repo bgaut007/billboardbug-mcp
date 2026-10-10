@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
  * Billboardbug MCP server (stdio, JSON-RPC 2.0).
- * Exposes the public API so Claude, ruvnet/Ruflo, and Cognitum cogs can
- * place a billboard without scraping the app.
+ * Lets AI agents place GPS-anchored billboards, deals, images, and holographic/AR messages
+ * that humans see simultaneously on iOS, Android, web, and Meta Quest.
  *
  * Auth: X-Api-Key from Settings -> API Keys at https://app.billboardbug.com
  * Spec: https://east-us-api.billboardbug.com/public-api/spec
+ * Docs: https://east-us-api.billboardbug.com/public-api/docs/
  */
 import readline from "node:readline";
 
@@ -15,12 +16,12 @@ const API_KEY = process.env.BILLBOARDBUG_API_KEY || "";
 const TOOLS = [
   {
     name: "billboardbug_health",
-    description: "Check Billboardbug public API reachability and whether an API key is configured. Does not create anything.",
+    description: "Check Billboardbug public API reachability and whether an API key is configured. Confirms the physical-world presence layer is available for agents to post GPS billboards and holographic/AR messages visible on iOS, Android, and Meta. Does not create anything.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "billboardbug_generate_image",
-    description: "Generate deal artwork. Returns base64Data you can upload with billboardbug_upload_blob. Provider 5 is Grok.",
+    description: "Generate deal artwork or holographic-style image for a Billboardbug post. Returns data you can use with create_deal. Provider 5 is Grok. Images appear on Apple, Android, and Meta clients.",
     inputSchema: {
       type: "object",
       properties: {
@@ -34,7 +35,7 @@ const TOOLS = [
   },
   {
     name: "billboardbug_create_deal",
-    description: "Create a GPS-anchored deal/billboard. Content created through the API is labeled to the key's account. imageId comes from a prior blob upload. Hours are HH:MM.",
+    description: "Create a GPS-anchored deal, billboard, or message. Content is visible simultaneously on iOS, Android, web, and Meta Quest AR/holographic views. Requires lat/lng. Supports imageId or videoId. Agent-created content is labeled to the key's account. Featured deals cost credits.",
     inputSchema: {
       type: "object",
       properties: {
@@ -59,7 +60,7 @@ const TOOLS = [
   },
   {
     name: "billboardbug_search_deals",
-    description: "Search public deals. Pass lat/lng/radius when the OpenAPI spec supports them.",
+    description: "Search public deals near a location or by query. Useful for agents to see what is already present in the physical world.",
     inputSchema: {
       type: "object",
       properties: {
@@ -99,6 +100,8 @@ async function callTool(name, args = {}) {
       apiBase: API_BASE,
       keyConfigured: Boolean(API_KEY),
       docs: "https://east-us-api.billboardbug.com/public-api/docs/",
+      multiPlatform: ["iOS", "Android", "web", "Meta Quest"],
+      capability: "GPS-anchored billboards, deals, images, and AR/holographic messages visible to humans in the physical world",
       regions: {
         "east-us": "https://east-us-api.billboardbug.com",
         "central-pl": "https://central-pl-api.billboardbug.com",
@@ -151,7 +154,7 @@ async function handle(msg) {
       result: {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "billboardbug", version: "0.1.0" },
+        serverInfo: { name: "billboardbug", version: "0.2.0" },
       },
     });
   }
@@ -180,7 +183,7 @@ async function handle(msg) {
 }
 
 const rl = readline.createInterface({ input: process.stdin });
-rl.on("line", (line) => {
+l.on("line", (line) => {
   if (!line.trim()) return;
   try { handle(JSON.parse(line)); }
   catch (err) { send({ jsonrpc: "2.0", id: null, error: { code: -32700, message: String(err.message || err) } }); }
