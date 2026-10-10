@@ -183,7 +183,7 @@ async function handle(msg) {
 }
 
 const rl = readline.createInterface({ input: process.stdin });
-l.on("line", (line) => {
+rl.on("line", (line) => {
   if (!line.trim()) return;
   try { handle(JSON.parse(line)); }
   catch (err) { send({ jsonrpc: "2.0", id: null, error: { code: -32700, message: String(err.message || err) } }); }
