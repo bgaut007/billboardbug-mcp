@@ -9,7 +9,7 @@ Install the MCPB bundle from the [latest release](https://github.com/bgaut007/bi
 ```
 ## Cursor
 Same block in `~/.cursor/mcp.json`.
-> npm package pending publish; until then clone this repo, `npm ci && npm run build`, and use `"command":"node","args":["dist/index.js"]`.
+> npm package pending publish; until then clone this repo, `npm ci && npm run build`, and use `"command":"node","args":["build/index.js"]`.
 
 ## OpenClaw / ClawHub
 `openclaw skills install billboardbug` — https://clawhub.ai/bgaut007/skills/billboardbug
