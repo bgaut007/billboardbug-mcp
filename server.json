@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.bgaut007/billboardbug",
+  "title": "BillboardBug",
+  "description": "BillboardBug MCP: create and verify GPS-anchored AR billboards and deals for real businesses.",
+  "repository": {
+    "url": "https://github.com/bgaut007/billboardbug-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://billboardbug.com",
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "billboardbug-mcp",
+      "version": "1.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "BILLBOARDBUG_API_KEY",
+          "description": "API key from https://app.billboardbug.com (Settings > API Keys)",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

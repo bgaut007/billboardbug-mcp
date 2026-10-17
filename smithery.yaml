@@ -1,0 +1,16 @@
+# Smithery config (legacy repo-based stdio format). Current Smithery publishing for stdio
+# servers uses the MCPB bundle: `npx -y @smithery/cli mcp publish ./billboardbug.mcpb -n <ns>/billboardbug`
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: ["billboardbugApiKey"]
+    properties:
+      billboardbugApiKey:
+        type: string
+        title: BillboardBug API key
+        description: Create at https://app.billboardbug.com (Settings > API Keys)
+  commandFunction: |-
+    (config) => ({ command: 'npx', args: ['-y', 'billboardbug-mcp'], env: { BILLBOARDBUG_API_KEY: config.billboardbugApiKey } })
+  exampleConfig:
+    billboardbugApiKey: "YOUR_KEY_HERE"

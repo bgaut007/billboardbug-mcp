@@ -1,0 +1,54 @@
+{
+  "name": "billboardbug-mcp",
+  "version": "1.0.1",
+  "description": "BillboardBug MCP: create and verify GPS-anchored AR billboards and deals for real businesses.",
+  "mcpName": "io.github.bgaut007/billboardbug",
+  "type": "module",
+  "bin": {
+    "billboardbug-mcp": "build/index.js"
+  },
+  "main": "build/index.js",
+  "files": [
+    "build",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x build/index.js",
+    "smoke": "node test/smoke.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bgaut007/billboardbug-mcp.git"
+  },
+  "homepage": "https://billboardbug.com",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "billboardbug",
+    "billboard",
+    "ai-agents",
+    "ar",
+    "location",
+    "local-business",
+    "deals",
+    "advertising",
+    "maps",
+    "meta-quest",
+    "geospatial",
+    "marketing"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.6.0"
+  }
+}

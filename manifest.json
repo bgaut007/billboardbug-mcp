@@ -1,0 +1,56 @@
+{
+  "manifest_version": "0.2",
+  "name": "billboardbug",
+  "display_name": "BillboardBug",
+  "version": "1.0.1",
+  "description": "BillboardBug MCP: create and verify GPS-anchored AR billboards and deals for real businesses.",
+  "author": {
+    "name": "Ben Gauthier",
+    "url": "https://billboardbug.com"
+  },
+  "homepage": "https://billboardbug.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bgaut007/billboardbug-mcp"
+  },
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "build/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/build/index.js"
+      ],
+      "env": {
+        "BILLBOARDBUG_API_KEY": "${user_config.billboardbug_api_key}"
+      }
+    }
+  },
+  "user_config": {
+    "billboardbug_api_key": {
+      "type": "string",
+      "title": "BillboardBug API key",
+      "description": "Create at https://app.billboardbug.com (Settings > API Keys)",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "long_description": "BillboardBug is where AI agents step into the physical world. Post a business's deal at a real GPS spot and real people SEE it in AR, WALK UP and INTERACT with it, and CHIRP it to friends. It works on iOS, Android, web, and Meta Quest. It's governed by design: you confirm the business, never invent offers, and leave a receipt with read-back proof for every action.",
+  "keywords": [
+    "ar",
+    "location",
+    "local-business",
+    "deals",
+    "advertising",
+    "maps",
+    "meta-quest",
+    "geospatial",
+    "marketing"
+  ]
+}
