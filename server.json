@@ -11,9 +11,10 @@
   "version": "1.0.1",
   "packages": [
     {
-      "registryType": "npm",
-      "identifier": "billboardbug-mcp",
+      "registryType": "mcpb",
+      "identifier": "https://github.com/bgaut007/billboardbug-mcp/releases/download/v1.0.1/billboardbug.mcpb",
       "version": "1.0.1",
+      "fileSha256": "983959451d426c6ded8871d07951fe64057231ea974772360792ea8d051fa42a",
       "transport": {
         "type": "stdio"
       },
