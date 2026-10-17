@@ -1,7 +1,7 @@
 ---
 name: billboardbug-deal-creator
 description: Put a real billboard on the real map. Create GPS-anchored BillboardBug deals people see in AR on iOS, Android, web and Meta Quest, chirp them, and verify with read-back. Use when asked to post a billboard, deal, promotion, or chirp on BillboardBug.
-version: 1.0.0
+version: 1.1.0
 metadata:
   openclaw:
     requires:
@@ -223,13 +223,20 @@ curl -s https://east-us-api.billboardbug.com/posts \
 
 Edit: `PUT /posts/{id}`. Delete: `DELETE /posts/{id}`. Comment: include `parentPostId`.
 
+Chirp fields (`PostRequest`): `isActive` (required), `text`, `imageId`, `videoId`, `videoUrl`,
+`parentPostId`, `isMature`. Supply at least one of text/imageId/videoId. Read back with
+`GET /posts/{id}` (no key needed); it only counts once that returns it with `"isActive":true`.
+The post schema has **no billboard/deal ID field**: to chirp a billboard, name the exact business,
+attach the billboard image (re-uploaded as `post-image`), and record the billboardId in your receipt.
+Live example: https://east-us-api.billboardbug.com/posts/01a143a0-6b07-75c3-ae5e-c6af4a0ee7d6
+
 ## 8. Verify and write the receipt
 
 Read back (deal read-back works without a key):
 
 ```bash
 curl -s -H "X-Version: 1" https://east-us-api.billboardbug.com/business/deal/<storefrontId>/<billboardId>
-curl -s -H "X-Version: 1" -H "X-Api-Key: $BILLBOARDBUG_API_KEY" https://east-us-api.billboardbug.com/posts/<chirpId>
+curl -s -H "X-Version: 1" https://east-us-api.billboardbug.com/posts/<chirpId>   # no key needed
 ```
 
 Confirm `isEnabled` is true and the image/video is attached. Then report one receipt block:
