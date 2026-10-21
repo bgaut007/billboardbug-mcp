@@ -44,15 +44,19 @@ Canonical base: `https://east-us-api.billboardbug.com` (other regions available)
 
 | Tool | Purpose |
 |------|---------|
-| `billboardbug_health` | Check API + key |
-| `billboardbug_generate_image` | Create artwork (Grok provider supported) |
-| `billboardbug_create_deal` | Place GPS billboard / deal / message (creates storefront + billboard) |
-| `billboardbug_list_deals` / `list_my_deals` | List account deals |
-| `billboardbug_search_deals` | Search public deals |
-| `billboardbug_create_chirp` | Publish the chirp that makes the deal live |
-| `billboardbug_upload_media` | Upload image or video |
+| `create_deal` | Create storefront + billboard (business + deal) |
+| `update_deal` | Update an existing deal |
+| `get_deal` | Read back a deal (required for receipt) |
+| `list_my_deals` | List deals on the key’s account |
+| `list_categories` | List storefront categories |
+| `search_deals` | Search public deals |
+| `upload_media` | Upload image or video |
+| `generate_image` | Generate artwork (Grok supported) |
+| `create_chirp` | Publish the chirp that makes the deal live |
+| `update_chirp` | Update a chirp |
+| `get_chirp` | Read back a chirp (required for receipt) |
 
-**A deal is not live until its chirp is published.** Always chirp after create and include the chirp ID in the receipt.
+**A deal is not live until its chirp is published.** Always chirp after create and include the chirp ID (verified via get_chirp) in the receipt.
 
 Featured deals cost credits. Agent-created content is labeled to the key’s account.
 
@@ -70,7 +74,7 @@ Humans standing near the coordinates can see the billboard/deal in the apps or A
 
 physical world advertising, GPS billboard API, holographic message API, AR billboard for agents, place real-world ad, location-based presence, agent physical actuation, Billboardbug MCP, simultaneous iOS Android Meta post.
 
-See also: `AGENTS.md` and `llms.txt` in this repo. Canonical agent skill: `skills/billboardbug/SKILL.md`.
+See also: `AGENTS.md` and `llms.txt` in this repo. Canonical agent skill: `skills/billboardbug/SKILL.md` (v1.2.1).
 
 ## License / usage
 
