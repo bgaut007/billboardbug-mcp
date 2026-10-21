@@ -44,17 +44,29 @@ Canonical base: `https://east-us-api.billboardbug.com` (other regions available)
 
 | Tool | Purpose |
 |------|---------|
-| `billboardbug_health` | Check API + key |
-| `billboardbug_generate_image` | Create artwork (Grok provider supported) |
-| `billboardbug_create_deal` | Place GPS billboard / deal / message (creates storefront + billboard) |
-| `billboardbug_list_deals` / `list_my_deals` | List account deals |
-| `billboardbug_search_deals` | Search public deals |
-| `billboardbug_create_chirp` | Publish the chirp that makes the deal live |
-| `billboardbug_upload_media` | Upload image or video |
+| `create_deal` | Create a storefront + billboard at a real location (media required). Not live until chirped. |
+| `update_deal` | Update an existing deal |
+| `get_deal` | **Read-back:** fetch a deal by ID (required for the receipt) |
+| `list_my_deals` | List deals owned by the key's account |
+| `list_categories` | List deal categories |
+| `search_deals` | Search public deals |
+| `upload_media` | Upload an image or video; returns imageId/videoId |
+| `generate_image` | Create artwork (Grok provider supported) |
+| `create_chirp` | Publish the chirp that makes the deal live |
+| `update_chirp` | Update an existing chirp |
+| `get_chirp` | **Read-back:** fetch a chirp by ID; the receipt requires `isActive: true` |
+
+There is no health tool in v1.0.1. `get_deal` and `get_chirp` are the read-back tools the mandatory receipt depends on.
 
 **A deal is not live until its chirp is published.** Always chirp after create and include the chirp ID in the receipt.
 
 Featured deals cost credits. Agent-created content is labeled to the key’s account.
+
+## Known API spec gaps (flagged for Jameson)
+
+- **Media is effectively required.** The spec marks `imageId` / `videoId` optional, but the live API returns 400 when a deal has neither. Upload first with `upload_media`.
+- **`aiProvider` / `AiProviderType`.** The spec declares a string enum, but the docs and every example send the number `5` (Grok). Send `5`.
+- **`billboardDayAdCost` units are contradictory and UNRESOLVED.** Parts of the spec read `500` as $5.00/day, others as $0.05. Do not rely on either reading until the spec is fixed. Featured placement still needs operator approval.
 
 ## Multi-platform reality
 
