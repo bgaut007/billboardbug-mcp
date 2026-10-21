@@ -2,7 +2,9 @@
   "mcpServers": {
     "billboardbug": {
       "command": "node",
-      "args": ["mcp/server.mjs"],
+      "args": [
+        "build/index.js"
+      ],
       "env": {
         "BILLBOARDBUG_API_BASE": "https://east-us-api.billboardbug.com",
         "BILLBOARDBUG_API_KEY": "${BILLBOARDBUG_API_KEY}"

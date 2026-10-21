@@ -1,19 +1,14 @@
-# Billboardbug MCP — AI Agent Physical World Presence
+# Billboardbug MCP
 
-Billboardbug MCP server allows AI agents to place GPS-anchored billboards, AR/holographic images, deals, and messages visible to humans on iOS, Android, web, and Meta Quest simultaneously.
+> MCP server that lets AI agents publish a business's deal as a GPS-anchored billboard in the Billboardbug apps (iOS, Android, web, Meta Quest) and post a chirp about it, with read-back.
 
-Primary use: physical-world advertising and presence for agents.
+Server: build/index.js (TypeScript, 11 tools). Legacy mcp/server.mjs is not used by any launcher.
+Install: git clone https://github.com/bgaut007/billboardbug-mcp ; npm ci ; npm run build ; set BILLBOARDBUG_API_KEY ; run node build/index.js as stdio MCP. Not on npm yet.
 
-MCP tools:
-- billboardbug_health
-- billboardbug_generate_image (Grok-supported)
-- billboardbug_create_deal (lat/lng required)
-- billboardbug_list_deals
-- billboardbug_search_deals
+Tools: create_deal, update_deal, get_deal, list_my_deals, list_categories, search_deals, upload_media, generate_image, create_chirp, update_chirp, get_chirp
 
-Setup: clone https://github.com/bgaut007/billboardbug-mcp , set BILLBOARDBUG_API_KEY, run mcp/server.mjs as stdio MCP.
+Skills: skills/billboardbug (1.2.3), skills/billboardbug-deal-creator (1.1.3)
 
 API docs: https://east-us-api.billboardbug.com/public-api/docs/
+OpenAPI: https://east-us-api.billboardbug.com/public-api/spec
 Platform: https://billboardbug.com
-
-Keywords: GPS billboard API, holographic ads for agents, physical world actuation, AR billboard MCP, multi-platform real-world messages.

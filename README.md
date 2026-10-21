@@ -21,7 +21,7 @@ API docs: https://east-us-api.billboardbug.com/public-api/docs/
 
 ## Quick start for agents / Claude / Cursor / MCP hosts
 
-**Use the v1.0.1 server** (build/index.js). It supports chirps, media upload, and the full tool set.
+**Use the TypeScript server** (`build/index.js`, 11 tools). Every launcher in this repo (`.mcp.json`, `.claude-plugin/plugin.json`, `manifest.json`) starts it. It is not on npm yet, so install from a clone and build first:
 
 ```bash
 git clone https://github.com/bgaut007/billboardbug-mcp.git
@@ -32,9 +32,9 @@ export BILLBOARDBUG_API_KEY="your-key-from-app.billboardbug.com"
 claude mcp add billboardbug -- node "$PWD/build/index.js"
 ```
 
-Or merge `.mcp.json` into your host config.
+Or merge `.mcp.json` into your host config (it runs `node build/index.js` from the repo root; run `npm run build` first).
 
-**Legacy note**: `mcp/server.mjs` is the older v0.2.0 server. It lacks chirp and upload tools. Do not use it for new installs.
+**Legacy note**: `mcp/server.mjs` is the older v0.2.0 server (5 tools, no chirp or upload). No launcher uses it now. Do not use it.
 
 **Get an API key**: https://app.billboardbug.com → Settings → API Keys  
 Header: `X-Api-Key`  
@@ -74,7 +74,7 @@ Humans standing near the coordinates can see the billboard/deal in the apps or A
 
 physical world advertising, GPS billboard API, holographic message API, AR billboard for agents, place real-world ad, location-based presence, agent physical actuation, Billboardbug MCP, simultaneous iOS Android Meta post.
 
-See also: `AGENTS.md` and `llms.txt` in this repo. Canonical agent skill: `skills/billboardbug/SKILL.md` (v1.2.1).
+See also: `AGENTS.md` and `llms.txt` in this repo. Agent skills: `skills/billboardbug/SKILL.md` (v1.2.3) and `skills/billboardbug-deal-creator/SKILL.md` (v1.1.3), matching ClawHub.
 
 ## License / usage
 
