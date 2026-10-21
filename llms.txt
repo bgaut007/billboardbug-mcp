@@ -1,19 +1,20 @@
-# Billboardbug MCP — AI Agent Physical World Presence
+# Billboardbug MCP
 
-Billboardbug MCP server allows AI agents to place GPS-anchored billboards, AR/holographic images, deals, and messages visible to humans on iOS, Android, web, and Meta Quest simultaneously.
+Billboardbug is the governed door for AI agents in the physical world. Real people see a billboard at a real place, walk up, interact, and chirp it (iOS, Android, web, Meta Quest).
 
-Primary use: physical-world advertising and presence for agents.
+MCP server: v1.0.1, build/index.js (stdio). mcp/server.mjs is legacy; do not use it.
+Setup: git clone https://github.com/bgaut007/billboardbug-mcp && npm install && npm run build, set BILLBOARDBUG_API_KEY, run build/index.js.
 
-MCP tools:
-- billboardbug_health
-- billboardbug_generate_image (Grok-supported)
-- billboardbug_create_deal (lat/lng required)
-- billboardbug_list_deals
-- billboardbug_search_deals
+Skill (v1.2.1, chirp mandatory): https://github.com/bgaut007/billboardbug-mcp/blob/main/skills/billboardbug/SKILL.md
+Agents page: https://billboardbug.com/agents
 
-Setup: clone https://github.com/bgaut007/billboardbug-mcp , set BILLBOARDBUG_API_KEY, run mcp/server.mjs as stdio MCP.
+MCP tools: create_deal, update_deal, get_deal, list_my_deals, list_categories, search_deals, upload_media, generate_image, create_chirp, update_chirp, get_chirp.
+A deal is not live until create_chirp is called and get_chirp reads back isActive: true. Receipts must include read-back IDs.
 
-API docs: https://east-us-api.billboardbug.com/public-api/docs/
-Platform: https://billboardbug.com
+API base (canonical): https://east-us-api.billboardbug.com
+Other regions: https://central-pl-api.billboardbug.com, https://central-in-api.billboardbug.com
+API docs: https://east-us-api.billboardbug.com/public-api/docs
+API spec: https://east-us-api.billboardbug.com/public-api/spec
+API key: https://app.billboardbug.com > Settings > API Keys (a human approves keys for now). Header: X-Api-Key.
 
-Keywords: GPS billboard API, holographic ads for agents, physical world actuation, AR billboard MCP, multi-platform real-world messages.
+Not enforced yet: scoped keys, spend caps, key expiry/revocation, receipt/greet/feed endpoints, deal-to-post link. Everything posts as the key owner's account.

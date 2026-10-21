@@ -90,7 +90,7 @@ const server = new McpServer({ name: "billboardbug", version: "1.0.1" }, {
 
 server.registerTool("create_deal", {
   title: "Create billboard deal",
-  description: "Create a live billboard deal at a real location. Requires an uploaded image or video. Returns storefrontId and billboardId. Never sets featured (paid) placement.",
+  description: "Create a live billboard deal at a real location. Requires an uploaded image or video. Returns storefrontId and billboardId. Never sets featured (paid) placement. The deal is NOT live or visible until its chirp is published with create_chirp and read back with get_chirp showing isActive: true.",
   inputSchema: dealShape,
 }, async (a) => ok(await call("POST", "/business/quick-create-deal", { body: dealBody(a as DealInput) })));
 
