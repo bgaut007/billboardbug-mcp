@@ -1,7 +1,7 @@
 ---
 name: billboardbug
 description: Put a real billboard on the real map. Create GPS-anchored BillboardBug deals people see in AR on iOS, Android, web and Meta Quest, chirp them, and verify with read-back. Use when asked to post a billboard, deal, promotion, or chirp on BillboardBug.
-version: 1.2.0
+version: 1.2.1
 metadata:
   openclaw:
     requires:
@@ -26,7 +26,9 @@ with it, and **chirp** it (share it as a social post). One API call puts a real,
 billboard in the world, and you get IDs you can read back as proof. It's governed by design: you
 confirm the business, never invent offers, and leave a receipt with read-back proof for every action.
 
-- API base: `https://east-us-api.billboardbug.com`
+**A deal is not live until its chirp is published.** Always create the chirp after the deal and include a verified chirp ID in the receipt. A receipt that lacks a chirp ID that reads back `isActive: true` is a failed receipt.
+
+- API base: `https://east-us-api.billboardbug.com` (canonical)
 - Docs: https://east-us-api.billboardbug.com/public-api/docs
 - OpenAPI spec: https://east-us-api.billboardbug.com/public-api/spec
 - App (get a key, see billboards): https://app.billboardbug.com
@@ -62,6 +64,7 @@ Key safety (non-negotiable):
 6. **The human chooses** where to go and what to post; you only suggest.
 7. **Every action gets a receipt** (see step 8). If a step fails, say so plainly. If the API is
    missing something, record the gap instead of making something up.
+8. **Chirp is mandatory.** A deal is not visible until its chirp is published. The receipt fails if the chirp is missing or does not read back `isActive: true`.
 
 ## 2. Collect everything in ONE message
 
@@ -200,15 +203,15 @@ Optional fields:
   default. For a better fit, list categories (about 7,000, key required) with
   `GET /business/storefront-categories` and pass the matching `id`.
 - `altitudeMeters` (0–1000): meters above ground level. Omit for a standard pole mount.
-- `isFeatured` / `unfeatureAt` (ISO date-time): **featured placement is paid** (daily rate in
-  `GET /global-config/all` → `billboardDayAdCost`, dollars × 100, and the account needs a billing
-  method). Never set `isFeatured: true` without your operator's explicit approval; default `false`.
+- `isFeatured` / `unfeatureAt` (ISO date-time): **featured placement is paid**. Never set `isFeatured: true` without your operator's explicit approval; default `false`.
 
 Update later with the same body: `PUT /business/quick-update-deal/{storefrontId}/{billboardId}`.
 Search deals: `GET /business/deals/search?search=<3+ chars>&limit=25&offset=0` (key required; the
 spec's only params are `search`, `limit`, `offset`).
 
-## 7. Chirp it
+## 7. Chirp it (mandatory)
+
+A deal is not live until this step succeeds. Do not stop after create.
 
 ```bash
 # optional image for the chirp
@@ -239,7 +242,7 @@ curl -s -H "X-Version: 1" https://east-us-api.billboardbug.com/business/deal/<st
 curl -s -H "X-Version: 1" https://east-us-api.billboardbug.com/posts/<chirpId>   # no key needed
 ```
 
-Confirm `isEnabled` is true and the image/video is attached. Then report one receipt block:
+Confirm `isEnabled` is true and the image/video is attached. Confirm the chirp reads back `isActive: true`. Then report one receipt block. **If the chirp ID is missing or the chirp read-back fails, the receipt is failed.**
 
 ```
 RECEIPT
@@ -249,7 +252,7 @@ business:     <exact name>, <address>
 coordinate:   <lat>, <lng>   (omit in public posts if your human prefers)
 window/end:   <time window> / <end date>
 deal:         storefrontId=<..> billboardId=<..>  readback: OK|FAILED
-chirp:        id=<..>  readback: OK|FAILED
+chirp:        id=<..>  readback: OK|FAILED   <-- REQUIRED. FAILED if missing or isActive not true
 feed entry:   <link or id of the one post you made naming the deal ID>
 gaps/errors:  <anything that failed or the API could not do>
 ```
