@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { readFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
+import { basename, extname, resolve, normalize } from "node:path";
 
 const BASE = (process.env.BILLBOARDBUG_API_BASE || "https://east-us-api.billboardbug.com").replace(/\/$/, "");
 const DEFAULT_CATEGORY = "ce8f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f";
@@ -145,13 +145,21 @@ server.registerTool("upload_media", {
   description: "Upload a local image/video file (or base64 data) to BillboardBug. Use billboard-image/billboard-video for deals, post-image/post-video for chirps. Returns the blob id.",
   inputSchema: {
     category: z.enum(["billboard-image", "billboard-video", "post-image", "post-video"]),
-    filePath: z.string().optional().describe("Absolute path to a local file"),
+    filePath: z.string().optional().describe("Path to a local file within the workspace root"),
     base64Data: z.string().optional().describe("Base64 or data: URI content (alternative to filePath)"),
     fileName: z.string().optional().describe("File name to use with base64Data, e.g. billboard.jpg"),
   },
 }, async ({ category, filePath, base64Data, fileName }) => {
   let bytes: Buffer; let name: string;
-  if (filePath) { bytes = await readFile(filePath); name = basename(filePath); }
+  if (filePath) {
+    const cwd = process.cwd();
+    const resolved = resolve(cwd, filePath);
+    if (!resolved.startsWith(normalize(cwd) + "/") && resolved !== normalize(cwd)) {
+      throw new Error(`Access denied: filePath must stay within the current working directory (${cwd})`);
+    }
+    bytes = await readFile(resolved);
+    name = basename(resolved);
+  }
   else if (base64Data) { bytes = Buffer.from(base64Data.includes(",") ? base64Data.split(",", 2)[1] : base64Data, "base64"); name = fileName ?? "upload.jpg"; }
   else throw new Error("Provide filePath or base64Data.");
   const form = new FormData();
