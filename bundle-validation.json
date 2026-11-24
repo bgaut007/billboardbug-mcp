@@ -1,16 +1,19 @@
 {
   "candidateOnly": true,
   "published": false,
-  "validationBaseCommit": "e2953212b468e28c6c7dea20d586e8c75d1fa7e4",
+  "validationBaseCommit": "a043538543e1d931ced0d5a837dfda3a85fe1919",
   "node": "v22.23.5",
-  "version": "1.0.1",
-  "archiveSha256": "4e4b38fd42b7a818f0a18a557db48074ea4ade83811905ede5f5b7e7269ead9d",
-  "archiveBytes": 5124916,
+  "version": "2.0.0",
+  "minimumNode": "20",
+  "archiveSha256": "c7e9faff76c4f01c5a399b465e040a8756786b0ab49b7ec9eb870d803b1a0c42",
+  "archiveBytes": 5124908,
   "archiveFileCount": 3588,
   "committedFileHashes": {
-    "package.json": "b297be9d8b0bf25b192eecc98c58464e6dd778bf5a0c6ca77e6d50d20da88d11",
-    "package-lock.json": "97662a7fed13cc01cbbf8a71458f8f79a0f61fa412158efd656f9f2a05590f6f",
-    "build/index.js": "7a04253ddf53bac274c316e02461285dc3f5026abe5d73a1be52af3fd11fc691",
+    "package.json": "8f11e272aca2ddc8b94955b3d483c9d1b2d17c16f7efbfeabd6efe351af41bcd",
+    "package-lock.json": "b9febcfcdfe818a8c59f78e7fd32722d099e85dbe50d680db54a01d461d41682",
+    "manifest.json": "f949480bfe1f453345d5d576150c79d063a995e19fe77127b3c45f8dc77d5a1d",
+    "src/index.ts": "08dead4c3db215ac3b6fd8cffc86422bf04932519b3383c10e18e7db9710c12a",
+    "build/index.js": "6acfcb86b83bca06c2f6855d8eae4183ab2fc888cc993010402053dfc0ddbcae",
     "build/media.js": "e79f7301837d075e85473b5abaa85d42c9f8953d6973680e5e4607ce4179553b"
   },
   "dependencies": {
@@ -23,6 +26,7 @@
   },
   "validated": [
     "moderate-or-higher audit gate",
+    "engine-strict Node 22 install",
     "TypeScript build",
     "source helper and mocked upload tests",
     "11 signature fixtures",
@@ -31,5 +35,5 @@
     "extracted helper and mocked upload tests"
   ],
   "limits": "Heuristic signature and path checks only, not a complete secret scan, formal schema validation, signature verification or desktop-host compatibility test. No release or registry metadata updated.",
-  "note": "Archive was generated in the validation workspace before this receipt commit. This is a candidate receipt, not release metadata, a new version, signature verification or desktop-host/production compatibility approval."
+  "note": "Unpublished 2.0.0 candidate built in the validation workspace before this receipt commit. Fresh checks on the committed files and supported runtimes, final artifact review and separate merge/publication approvals are still required. Existing v1.0.1 release and server.json registry metadata were not changed."
 }

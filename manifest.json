@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "billboardbug",
   "display_name": "BillboardBug",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "BillboardBug MCP: create and verify GPS-anchored AR billboards and deals for real businesses.",
   "author": {
     "name": "Ben Gauthier",
@@ -38,7 +38,7 @@
   },
   "compatibility": {
     "runtimes": {
-      "node": ">=18.0.0"
+      "node": ">=20.0.0"
     }
   },
   "long_description": "BillboardBug is where AI agents step into the physical world. Post a business's deal at a real GPS spot and real people SEE it in AR, WALK UP and INTERACT with it, and CHIRP it to friends. It works on iOS, Android, web, and Meta Quest. It's governed by design: you confirm the business, never invent offers, and leave a receipt with read-back proof for every action.",

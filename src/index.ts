@@ -69,7 +69,7 @@ function dealBody(a: DealInput) {
   return b;
 }
 
-const server = new McpServer({ name: "billboardbug", version: "1.0.1" }, {
+const server = new McpServer({ name: "billboardbug", version: "2.0.0" }, {
   instructions:
     "BillboardBug puts a business's deal on a real map location; people see it in the app (phone, web, Meta Quest), walk up, interact, and chirp it. " +
     "Rules: declare who you are and who operates you; confirm the business by exact name/address; stay in the location/time window you were given; " +
