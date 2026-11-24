@@ -1,0 +1,120 @@
+name: Publish approved MCP 2.0.0 prerelease
+on:
+  push:
+    branches: [release/mcp-bundle-validation-2026-11-24]
+    paths: [.github/workflows/publish-mcp-v2-prerelease.yml]
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.repository == 'bgaut007/billboardbug-mcp' && github.ref == 'refs/heads/release/mcp-bundle-validation-2026-11-24' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: e0ff0af4cea14083a086348af5a8846b0f2b1584
+          persist-credentials: false
+      - name: Download only the reviewed canonical artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD)" = 'e0ff0af4cea14083a086348af5a8846b0f2b1584'
+          gh api repos/bgaut007/billboardbug-mcp/actions/runs/45396218930 > "$RUNNER_TEMP/source-run.json"
+          gh run download 45396218930 --repo bgaut007/billboardbug-mcp --name mcp-committed-bundle-node-22 --dir "$RUNNER_TEMP/mcp-release-download"
+      - name: Verify exact archive bytes and source correspondence before publication
+        run: |
+          python3 <<'PY'
+          import hashlib, json, os, shutil, zipfile
+          from pathlib import Path, PurePosixPath
+          temp = Path(os.environ['RUNNER_TEMP'])
+          run = json.loads((temp / 'source-run.json').read_text())
+          assert run['id'] == 45396218930
+          assert run['head_sha'] == '240d149abf965d507cbc2ab997590ebdb0692cb9'
+          assert run['event'] == 'push' and run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['repository']['full_name'] == 'bgaut007/billboardbug-mcp'
+          assert run['path'] == '.github/workflows/bundle-preflight.yml'
+          candidates = list((temp / 'mcp-release-download').rglob('billboardbug-candidate.mcpb'))
+          assert len(candidates) == 1
+          archive = candidates[0]
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          expected = 'adc584ac09f3e77a4e1d15f573599ef49cbcbb81226c2c0349291054417ec4ec'
+          assert digest == expected and archive.stat().st_size == 5125103
+          inventory = json.loads((archive.parent / 'inventory.json').read_text())
+          assert inventory['sourceCommit'] == run['head_sha']
+          assert inventory['version'] == '2.0.0' and inventory['sha256'] == expected
+          assert inventory['archiveBytes'] == 5125103 and inventory['fileCount'] == 3588
+          entries = {item['path']: item for item in inventory['files']}
+          assert len(entries) == len(inventory['files']) == 3588
+          full_lock = json.loads(Path('package-lock.json').read_text())
+          with zipfile.ZipFile(archive) as bundle:
+              assert bundle.testzip() is None
+              names = bundle.namelist()
+              assert len(names) == len(set(names)) == 3588 and set(names) == set(entries)
+              for info in bundle.infolist():
+                  path = PurePosixPath(info.filename)
+                  assert not path.is_absolute() and '..' not in path.parts and '\\' not in info.filename
+                  assert (info.external_attr >> 16) & 0o170000 != 0o120000
+                  data = bundle.read(info.filename)
+                  assert len(data) == entries[info.filename]['bytes']
+                  assert hashlib.sha256(data).hexdigest() == entries[info.filename]['sha256']
+              for name in ['manifest.json', 'package.json', 'README.md', 'LICENSE', 'build/index.js', 'build/media.js']:
+                  assert bundle.read(name) == Path(name).read_bytes(), f'Packaged source mismatch: {name}'
+              manifest = json.loads(bundle.read('manifest.json'))
+              assert manifest['version'] == '2.0.0' and manifest['compatibility']['runtimes']['node'] == '>=20.0.0'
+              packed_lock = json.loads(bundle.read('package-lock.json'))
+              assert packed_lock['version'] == full_lock['version'] == '2.0.0'
+              assert packed_lock['packages']['']['dependencies'] == full_lock['packages']['']['dependencies']
+              for path, metadata in packed_lock['packages'].items():
+                  if not path:
+                      continue
+                  reference = full_lock['packages'][path]
+                  for key in ['version', 'resolved', 'integrity']:
+                      assert metadata.get(key) == reference.get(key), f'Runtime dependency mismatch: {path}'
+          assets = temp / 'mcp-release-assets'
+          assets.mkdir()
+          shutil.copyfile(archive, assets / 'billboardbug.mcpb')
+          (assets / 'SHA256SUMS').write_text(expected + '  billboardbug.mcpb\n')
+          verification = {'kind': 'pre-publication-asset-verification', 'version': '2.0.0', 'tag': 'v2.0.0', 'releaseType': 'GitHub pre-release, not Latest', 'sourceCommit': 'e0ff0af4cea14083a086348af5a8846b0f2b1584', 'validatedArtifactHead': '240d149abf965d507cbc2ab997590ebdb0692cb9', 'artifactRun': 45396218930, 'artifactName': 'mcp-committed-bundle-node-22', 'asset': 'billboardbug.mcpb', 'sha256': expected, 'bytes': 5125103, 'files': 3588, 'verification': ['exact reviewed archive hash and size', 'successful pinned source workflow run', 'ZIP integrity and every inventory file hash', 'packaged manifest/package/README/license/build match merged source', 'runtime lockfile entries correspond to merged lockfile'], 'limits': 'Not formal MCPB schema conformance, bundle signature verification, desktop-host integration, Windows/macOS validation, production uploads, exhaustive schema compatibility or complete security. npm and registry publication are not included.'}
+          (assets / 'asset-verification.json').write_text(json.dumps(verification, indent=2) + '\n')
+          notes = '''# BillboardBug MCP 2.0.0 (pre-release)
+
+This is a GitHub MCPB pre-release, not a production compatibility certification or npm publication.
+
+## Compatibility changes
+- Requires Node.js 20 or later.
+- Local uploads must use BILLBOARDBUG_MEDIA_ROOT (default ./media relative to the server working directory). Keep that directory operator-controlled, private and free of secrets.
+- Local and decoded base64 media are limited to 10 MiB. Canonical padded base64 is required; symlinks, traversal, non-regular files and unsupported extensions are rejected.
+- Unsupported safe-file-opening platforms must use base64. Linux descriptor checks require /proc/self/fd.
+- Zod is upgraded to 4.6.7; the MCP SDK is 1.32.2 with repaired transitive dependencies.
+
+## Validation
+Committed-file CI passed on Node 20, 22 and 24 on Ubuntu, including engine-strict install, a moderate-or-higher audit gate, generated-build consistency, local stdio version verification, helper/mocked upload regressions, signature fixtures, ZIP inspection and extracted-bundle tests. These are not production API calls.
+
+Merged source: e0ff0af4cea14083a086348af5a8846b0f2b1584
+Validated canonical artifact source: 240d149abf965d507cbc2ab997590ebdb0692cb9
+Artifact workflow run: 45396218930
+Bundle SHA-256: adc584ac09f3e77a4e1d15f573599ef49cbcbb81226c2c0349291054417ec4ec
+Bundle size: 5125103 bytes; 3588 files.
+
+## Limits
+No independent review, formal MCPB schema conformance, bundle signature verification, desktop-host integration, Windows/macOS local-file validation, production upload or exhaustive tool/schema compatibility is claimed. Credential-signature checks are heuristic, not a complete secret scan. Path checks are not an OS sandbox against hostile concurrent directory replacement or same-user processes.
+
+Review the compatibility notes before installing. Existing v1.0.1 release assets are unchanged. This release is explicitly not Latest. MCP registry metadata and npm publication are not updated by this action.
+'''
+          (temp / 'mcp-release-notes.md').write_text(notes)
+          PY
+      - name: Create exact source tag without replacing any existing tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST repos/bgaut007/billboardbug-mcp/git/refs -f ref='refs/tags/v2.0.0' -f sha='e0ff0af4cea14083a086348af5a8846b0f2b1584'
+          test "$(gh api repos/bgaut007/billboardbug-mcp/git/ref/tags/v2.0.0 --jq '.object.sha')" = 'e0ff0af4cea14083a086348af5a8846b0f2b1584'
+      - name: Publish approved public prerelease and exact assets, not Latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v2.0.0 --repo bgaut007/billboardbug-mcp --verify-tag --prerelease --latest=false --title 'BillboardBug MCP 2.0.0 (pre-release)' --notes-file "$RUNNER_TEMP/mcp-release-notes.md" "$RUNNER_TEMP/mcp-release-assets/billboardbug.mcpb" "$RUNNER_TEMP/mcp-release-assets/SHA256SUMS" "$RUNNER_TEMP/mcp-release-assets/asset-verification.json"
