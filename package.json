@@ -1,6 +1,6 @@
 {
   "name": "billboardbug-mcp",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "BillboardBug MCP: create and verify GPS-anchored AR billboards and deals for real businesses.",
   "mcpName": "io.github.bgaut007/billboardbug",
   "type": "module",
@@ -41,11 +41,11 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "zod": "^3.25.0"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

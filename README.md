@@ -1,81 +1,65 @@
-# Billboardbug MCP — Physical-World Ads & Holographic Messages for AI Agents
+# BillboardBug MCP
 
-**Any AI agent can place real-world GPS-anchored billboards, AR/holographic images, deals, and messages that humans see on iOS, Android, web, and Meta Quest.**
+A local stdio MCP server for the BillboardBug API. The TypeScript implementation is built to `build/index.js` and exposes the eleven tools listed below.
 
-This is the open MCP server that exposes Billboardbug’s public API. Agents have already used it (Perplexity, OpenClawCity, others). One call creates content visible across Apple, Android, and Meta devices simultaneously.
+Repository: https://github.com/bgaut007/billboardbug-mcp
+Published bundles: https://github.com/bgaut007/billboardbug-mcp/releases
+API documentation: https://east-us-api.billboardbug.com/public-api/docs/
 
-Repo: https://github.com/bgaut007/billboardbug-mcp  
-Live platform: https://billboardbug.com  
-API docs: https://east-us-api.billboardbug.com/public-api/docs/
+A repository version or successful CI build is not proof that a release has been published. Use the release asset and checksum for the specific version you intend to install.
 
-## What agents can do
+## Version 2.0.0 compatibility
 
-- Place a GPS-anchored digital billboard or deal at any latitude/longitude.
-- Generate and attach images (including via Grok) or use existing media.
-- Create content that appears in the Billboardbug apps (iOS, Android), web map, and Meta Quest AR/VR experiences.
-- Support for images, video references, and AR/holographic-style presentation on supported clients.
-- Search and list existing deals.
-- **Chirp** (post) the billboard so it is live and visible.
+- Node.js 20 or later is required by the package and bundle manifest. Release validation targets Node 20, 22 and 24.
+- Local uploads are restricted to the operator-controlled `BILLBOARDBUG_MEDIA_ROOT` directory, defaulting to `./media` relative to the server working directory. Previously accepted arbitrary local paths must move into that directory or use base64.
+- Local and decoded base64 media are limited to 10 MiB. Base64 must be canonical and padded; whitespace and unpadded input are rejected.
+- Symlinks, traversal outside the media root, non-regular files and unsupported media extensions are rejected. Exactly one upload source is required.
+- Keep the media directory private, free of secrets and unwritable by untrusted local processes. Path checks are not an OS sandbox against hostile concurrent directory replacement or same-user processes.
+- Unsupported safe-file-opening platforms must use base64. Linux descriptor-path checks require `/proc/self/fd`. Local-file behavior has not been validated on Windows or macOS.
+- Dependency updates include a Zod major-version change. Existing helper and mocked upload regressions do not establish exhaustive compatibility for all tool inputs or production behavior.
 
-**Unique capability**: AI agents can communicate with humans in the physical world through location-tied advertisements, messages, and holographic/AR images. No contracts, no minimums — minutes from idea to live presence.
+## Build from a reviewed checkout
 
-## Quick start for agents / Claude / Cursor / MCP hosts
-
-**Use the TypeScript server** (`build/index.js`, 11 tools). Every launcher in this repo (`.mcp.json`, `.claude-plugin/plugin.json`, `manifest.json`) starts it. It is not on npm yet, so install from a clone and build first:
+On a supported shell and Node runtime, from the repository root:
 
 ```bash
-git clone https://github.com/bgaut007/billboardbug-mcp.git
-cd billboardbug-mcp
-npm install
+npm ci --ignore-scripts --engine-strict
 npm run build
+mkdir -p media
 export BILLBOARDBUG_API_KEY="your-key-from-app.billboardbug.com"
 claude mcp add billboardbug -- node "$PWD/build/index.js"
 ```
 
-Or merge `.mcp.json` into your host config (it runs `node build/index.js` from the repo root; run `npm run build` first).
+Create an API key at https://app.billboardbug.com in Settings > API Keys. Keep it in the host's secret/environment configuration; never commit it or paste it into shared logs. Review your host's approval settings before enabling tools that create or update content.
 
-**Legacy note**: `mcp/server.mjs` is the older v0.2.0 server (5 tools, no chirp or upload). No launcher uses it now. Do not use it.
+The repository `.mcp.json` and bundle manifest use `build/index.js`. Build before launching from a clone. `mcp/server.mjs` is a separate legacy implementation; it is not the maintained upload implementation.
 
-**Get an API key**: https://app.billboardbug.com → Settings → API Keys  
-Header: `X-Api-Key`  
-Canonical base: `https://east-us-api.billboardbug.com` (other regions available).
-
-## Tools exposed (v1.0.1)
+## Tools
 
 | Tool | Purpose |
-|------|---------|
-| `create_deal` | Create storefront + billboard (business + deal) |
-| `update_deal` | Update an existing deal |
-| `get_deal` | Read back a deal (required for receipt) |
-| `list_my_deals` | List deals on the key’s account |
-| `list_categories` | List storefront categories |
-| `search_deals` | Search public deals |
-| `upload_media` | Upload image or video |
-| `generate_image` | Generate artwork (Grok supported) |
-| `create_chirp` | Publish the chirp that makes the deal live |
+|---|---|
+| `create_deal` | Create a deal from supplied business, location and media information |
+| `update_deal` | Update a deal |
+| `get_deal` | Read a deal back |
+| `list_my_deals` | List deals associated with the API key |
+| `list_categories` | Retrieve storefront categories |
+| `search_deals` | Search deals |
+| `upload_media` | Upload permitted local or base64 media |
+| `generate_image` | Request image generation |
+| `create_chirp` | Create a chirp |
 | `update_chirp` | Update a chirp |
-| `get_chirp` | Read back a chirp (required for receipt) |
+| `get_chirp` | Read a chirp back |
 
-**A deal is not live until its chirp is published.** Always chirp after create and include the chirp ID (verified via get_chirp) in the receipt.
+Tool success is not independent proof of map visibility or end-to-end application health. Confirm the business's instructions, avoid invented offers, and perform read-back verification before reporting a completed action.
 
-Featured deals cost credits. Agent-created content is labeled to the key’s account.
+## Bundle validation and limits
 
-## Multi-platform reality
+The bundle workflow installs the committed lockfile without lifecycle scripts, audits dependencies, rebuilds, checks generated-file drift and runs helper and mocked upload tests. It packages an allowlisted manifest, package metadata, README, license, rebuilt server/helper and production dependencies. It inspects paths, sizes, selected credential signatures and ZIP integrity, then tests the extracted bundle with mocked networking.
 
-A single create call posts content that is available on:
-- iOS (App Store)
-- Android (Google Play)
-- Web map
-- Meta Quest (AR/VR)
+Credential-signature heuristics are not a complete secret scan. The checks do not establish formal MCPB schema conformance, bundle signature verification, desktop-host integration, Windows/macOS behavior or production upload success. GitHub Actions artifacts and candidate receipts are not releases.
 
-Humans standing near the coordinates can see the billboard/deal in the apps or AR view.
+Public API response redaction, per-action authorization, API-base restrictions and broader gateway/database security remain separate review work.
 
-## Discovery keywords for agents
+## License and responsible use
 
-physical world advertising, GPS billboard API, holographic message API, AR billboard for agents, place real-world ad, location-based presence, agent physical actuation, Billboardbug MCP, simultaneous iOS Android Meta post.
-
-See also: `AGENTS.md` and `llms.txt` in this repo. Agent skills: `skills/billboardbug/SKILL.md` (v1.2.3) and `skills/billboardbug-deal-creator/SKILL.md` (v1.1.3), matching ClawHub.
-
-## License / usage
-
-Use the public API responsibly. Never commit keys. Content follows Billboardbug terms.
+MIT. Use the API responsibly and follow BillboardBug's terms.

@@ -1,0 +1,39 @@
+{
+  "candidateOnly": true,
+  "published": false,
+  "validationBaseCommit": "a043538543e1d931ced0d5a837dfda3a85fe1919",
+  "node": "v22.23.5",
+  "version": "2.0.0",
+  "minimumNode": "20",
+  "archiveSha256": "c7e9faff76c4f01c5a399b465e040a8756786b0ab49b7ec9eb870d803b1a0c42",
+  "archiveBytes": 5124908,
+  "archiveFileCount": 3588,
+  "committedFileHashes": {
+    "package.json": "8f11e272aca2ddc8b94955b3d483c9d1b2d17c16f7efbfeabd6efe351af41bcd",
+    "package-lock.json": "b9febcfcdfe818a8c59f78e7fd32722d099e85dbe50d680db54a01d461d41682",
+    "manifest.json": "f949480bfe1f453345d5d576150c79d063a995e19fe77127b3c45f8dc77d5a1d",
+    "src/index.ts": "08dead4c3db215ac3b6fd8cffc86422bf04932519b3383c10e18e7db9710c12a",
+    "build/index.js": "6acfcb86b83bca06c2f6855d8eae4183ab2fc888cc993010402053dfc0ddbcae",
+    "build/media.js": "e79f7301837d075e85473b5abaa85d42c9f8953d6973680e5e4607ce4179553b"
+  },
+  "dependencies": {
+    "node_modules/@hono/node-server": "2.1.11",
+    "node_modules/@modelcontextprotocol/sdk": "1.32.2",
+    "node_modules/body-parser": "2.4.0",
+    "node_modules/fast-uri": "3.1.9",
+    "node_modules/hono": "4.13.21",
+    "node_modules/zod": "4.6.7"
+  },
+  "validated": [
+    "moderate-or-higher audit gate",
+    "engine-strict Node 22 install",
+    "TypeScript build",
+    "source helper and mocked upload tests",
+    "11 signature fixtures",
+    "archive structure and heuristic signature inspection",
+    "ZIP integrity and extraction",
+    "extracted helper and mocked upload tests"
+  ],
+  "limits": "Heuristic signature and path checks only, not a complete secret scan, formal schema validation, signature verification or desktop-host compatibility test. No release or registry metadata updated.",
+  "note": "Unpublished 2.0.0 candidate built in the validation workspace before this receipt commit. Fresh checks on the committed files and supported runtimes, final artifact review and separate merge/publication approvals are still required. Existing v1.0.1 release and server.json registry metadata were not changed."
+}

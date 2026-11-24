@@ -1,7 +1,7 @@
 name: MCP release preflight
 on:
   push:
-    branches: [security/mcp-upload-hardening-2026-11-24]
+    branches: [main, release/mcp-bundle-validation-2026-11-24, security/mcp-upload-hardening-2026-11-24]
   pull_request:
     branches: [main]
 permissions:
@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        node: [18, 20, 22]
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ matrix.node }}
-      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --engine-strict
       - run: npm run build
       - run: node --test test/media-security.mjs test/upload-handler-security.mjs
       - name: Inspect package file list without publishing
@@ -35,9 +35,7 @@ jobs:
           const pack = packs[0];
           assert.equal(pack.name, 'billboardbug-mcp');
           const files = pack.files.map(file => file.path);
-          for (const required of ['package.json', 'build/index.js', 'build/media.js', 'README.md', 'LICENSE']) {
-            assert(files.includes(required), `Missing packaged file: ${required}`);
-          }
+          for (const required of ['package.json', 'build/index.js', 'build/media.js', 'README.md', 'LICENSE']) assert(files.includes(required), `Missing packaged file: ${required}`);
           for (const path of files) {
             assert(!path.split('/').some(part => part.startsWith('.')), `Unexpected hidden package path: ${path}`);
             assert(!/\.(pem|key|p12|pfx|enc)$/i.test(path), `Sensitive-looking package path: ${path}`);

@@ -1,0 +1,28 @@
+name: MCP bundle preflight
+on:
+  push:
+    branches: [main, release/mcp-bundle-validation-2026-11-24]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  supported-runtimes:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '24']
+    uses: ./.github/workflows/build-mcp-bundle.yml
+    with:
+      node: ${{ matrix.node }}
+  canonical-node-22:
+    uses: ./.github/workflows/build-mcp-bundle.yml
+    with:
+      node: '22'
+  archive-metadata:
+    needs: canonical-node-22
+    name: 'Canonical MCP ${{ needs.canonical-node-22.outputs.version }} / SHA256 ${{ needs.canonical-node-22.outputs.sha256 }} / bytes ${{ needs.canonical-node-22.outputs.bytes }} / files ${{ needs.canonical-node-22.outputs.files }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo 'Canonical archive validation and artifact upload passed; nothing published.'

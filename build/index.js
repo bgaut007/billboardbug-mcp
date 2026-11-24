@@ -2,8 +2,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { readFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
+import { extname, resolve } from "node:path";
+import { readMediaFile, decodeMediaBase64, MAX_BASE64_CHARS } from "./media.js";
 const BASE = (process.env.BILLBOARDBUG_API_BASE || "https://east-us-api.billboardbug.com").replace(/\/$/, "");
 const DEFAULT_CATEGORY = "ce8f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f";
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -39,11 +39,7 @@ async function call(method, path, opts = {}) {
 }
 const ok = (data) => ({ content: [{ type: "text", text: JSON.stringify(data, null, 2) }] });
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "HH:MM 24-hour");
-const dayHours = z.union([
-    z.literal("closed"),
-    z.literal("24h"),
-    z.object({ open: hhmm, close: hhmm }),
-]);
+const dayHours = z.union([z.literal("closed"), z.literal("24h"), z.object({ open: hhmm, close: hhmm })]);
 const dealShape = {
     title: z.string().min(1).max(18).describe("Deal title, max 18 characters"),
     description: z.string().min(1).max(1000).describe("Use only claims, prices, and hours the business provided"),
@@ -55,8 +51,7 @@ const dealShape = {
     videoId: z.string().optional().describe("Blob id from upload_media (category billboard-video)"),
     categoryId: z.string().optional().describe(`Storefront category UUID from list_categories; default ${DEFAULT_CATEGORY} (Miscellaneous)`),
     altitudeMeters: z.number().min(0).max(1000).optional(),
-    hours: z.union([z.literal("24/7"), z.object(Object.fromEntries(DAYS.map((d) => [d, dayHours])))])
-        .describe('"24/7" or per-day: {monday: "closed" | "24h" | {open:"09:00",close:"17:00"}, ...}'),
+    hours: z.union([z.literal("24/7"), z.object(Object.fromEntries(DAYS.map((d) => [d, dayHours])))]).describe('"24/7" or per-day: {monday: "closed" | "24h" | {open:"09:00",close:"17:00"}, ...}'),
     isEnabled: z.boolean().optional().default(true),
 };
 function dealBody(a) {
@@ -65,8 +60,7 @@ function dealBody(a) {
     const b = {
         title: a.title, description: a.description, name: a.businessName, locationDescription: a.address,
         locationLat: a.lat, locationLng: a.lng, categoryId: a.categoryId ?? DEFAULT_CATEGORY,
-        isEnabled: a.isEnabled ?? true,
-        isFeatured: false, // featuring costs money; intentionally not exposed by this server
+        isEnabled: a.isEnabled ?? true, isFeatured: false,
     };
     if (a.imageId)
         b.imageId = a.imageId;
@@ -93,7 +87,7 @@ function dealBody(a) {
     }
     return b;
 }
-const server = new McpServer({ name: "billboardbug", version: "1.0.1" }, {
+const server = new McpServer({ name: "billboardbug", version: "2.0.0" }, {
     instructions: "BillboardBug puts a business's deal on a real map location; people see it in the app (phone, web, Meta Quest), walk up, interact, and chirp it. " +
         "Rules: declare who you are and who operates you; confirm the business by exact name/address; stay in the location/time window you were given; " +
         "never invent prices, hours, or claims; the human chooses; after creating, read back with get_deal/get_chirp and give a receipt with IDs. " +
@@ -111,22 +105,17 @@ server.registerTool("update_deal", {
     inputSchema: { storefrontId: z.string().uuid(), billboardId: z.string().uuid(), ...dealShape },
 }, async ({ storefrontId, billboardId, ...rest }) => ok(await call("PUT", `/business/quick-update-deal/${storefrontId}/${billboardId}`, { body: dealBody(rest) })));
 server.registerTool("get_deal", {
-    title: "Get deal (read-back)",
-    description: "Read a deal back by storefrontId and billboardId to verify it is live. Works without an API key.",
-    inputSchema: { storefrontId: z.string().uuid(), billboardId: z.string().uuid() },
-    annotations: { readOnlyHint: true },
+    title: "Get deal (read-back)", description: "Read a deal back by storefrontId and billboardId to verify it is live. Works without an API key.",
+    inputSchema: { storefrontId: z.string().uuid(), billboardId: z.string().uuid() }, annotations: { readOnlyHint: true },
 }, async ({ storefrontId, billboardId }) => ok(await call("GET", `/business/deal/${storefrontId}/${billboardId}`, { auth: "optional" })));
 server.registerTool("list_my_deals", {
-    title: "List my deals",
-    description: "List deals owned by the API key's account.",
-    inputSchema: { limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional() },
-    annotations: { readOnlyHint: true },
+    title: "List my deals", description: "List deals owned by the API key's account.",
+    inputSchema: { limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional() }, annotations: { readOnlyHint: true },
 }, async ({ limit, offset }) => ok(await call("GET", `/business/quick-get-deals?limit=${limit ?? 25}&offset=${offset ?? 0}`)));
 server.registerTool("list_categories", {
     title: "List storefront categories",
     description: "List storefront categories for categoryId (about 7,000). Pass nameContains to filter. Requires an API key. Default used by create_deal is Miscellaneous.",
-    inputSchema: { nameContains: z.string().optional(), max: z.number().int().min(1).max(500).optional() },
-    annotations: { readOnlyHint: true },
+    inputSchema: { nameContains: z.string().optional(), max: z.number().int().min(1).max(500).optional() }, annotations: { readOnlyHint: true },
 }, async ({ nameContains, max }) => {
     const all = (await call("GET", "/business/storefront-categories"));
     const q = nameContains?.toLowerCase();
@@ -134,66 +123,50 @@ server.registerTool("list_categories", {
     return ok({ total: hits.length, categories: hits.slice(0, max ?? 50) });
 });
 server.registerTool("search_deals", {
-    title: "Search deals",
-    description: "Search BillboardBug deals by text (min 3 characters). Requires an API key.",
-    inputSchema: { search: z.string().min(3), limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional() },
-    annotations: { readOnlyHint: true },
+    title: "Search deals", description: "Search BillboardBug deals by text (min 3 characters). Requires an API key.",
+    inputSchema: { search: z.string().min(3), limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional() }, annotations: { readOnlyHint: true },
 }, async ({ search, limit, offset }) => ok(await call("GET", `/business/deals/search?search=${encodeURIComponent(search)}&limit=${limit ?? 25}&offset=${offset ?? 0}`)));
 const MIME = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif", ".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm" };
 server.registerTool("upload_media", {
     title: "Upload image or video",
-    description: "Upload a local image/video file (or base64 data) to BillboardBug. Use billboard-image/billboard-video for deals, post-image/post-video for chirps. Returns the blob id.",
+    description: "Upload an image/video of at most 10 MiB. Local paths are relative to BILLBOARDBUG_MEDIA_ROOT (default: ./media), not the workspace. The operator must keep that directory private and free of secrets; symlinks are rejected. Unsupported safe-file-opening platforms must use base64. Use billboard-image/billboard-video for deals, post-image/post-video for chirps. Returns the blob id.",
     inputSchema: {
         category: z.enum(["billboard-image", "billboard-video", "post-image", "post-video"]),
-        filePath: z.string().optional().describe("Absolute path to a local file"),
-        base64Data: z.string().optional().describe("Base64 or data: URI content (alternative to filePath)"),
-        fileName: z.string().optional().describe("File name to use with base64Data, e.g. billboard.jpg"),
+        filePath: z.string().min(1).max(4096).optional().describe("File within the operator-controlled media directory"),
+        base64Data: z.string().min(1).max(MAX_BASE64_CHARS + 256).optional().describe("Canonical padded base64 or base64 data URI; alternative to filePath; decoded limit 10 MiB"),
+        fileName: z.string().min(1).max(255).optional().describe("Media filename for base64 data, e.g. billboard.jpg"),
     },
 }, async ({ category, filePath, base64Data, fileName }) => {
-    let bytes;
-    let name;
-    if (filePath) {
-        bytes = await readFile(filePath);
-        name = basename(filePath);
-    }
-    else if (base64Data) {
-        bytes = Buffer.from(base64Data.includes(",") ? base64Data.split(",", 2)[1] : base64Data, "base64");
-        name = fileName ?? "upload.jpg";
-    }
-    else
-        throw new Error("Provide filePath or base64Data.");
+    if ((filePath !== undefined) === (base64Data !== undefined))
+        throw new Error("Provide exactly one of filePath or base64Data");
+    apiKey(true);
+    const media = filePath !== undefined
+        ? await readMediaFile(filePath, resolve(process.env.BILLBOARDBUG_MEDIA_ROOT || resolve(process.cwd(), "media")))
+        : decodeMediaBase64(base64Data, fileName);
+    const mime = MIME[extname(media.name).toLowerCase()];
+    if (!mime)
+        throw new Error("Unsupported media file extension");
     const form = new FormData();
-    form.append("file", new Blob([new Uint8Array(bytes)], { type: MIME[extname(name).toLowerCase()] ?? "application/octet-stream" }), name);
+    form.append("file", new Blob([new Uint8Array(media.bytes)], { type: mime }), media.name);
     return ok(await call("POST", `/blobs?category=${category}`, { form, version: "3" }));
 });
 server.registerTool("generate_image", {
-    title: "Generate AI image",
-    description: "Generate billboard artwork from a prompt (recommended 640x373). Returns base64 data URIs you can pass to upload_media. Prefer realistic photos.",
-    inputSchema: { prompt: z.string().min(1).max(2000), width: z.number().int().optional(), height: z.number().int().optional(),
-        aiProvider: z.number().int().optional().describe("Provider type from GET /global-config/all: 5 = Grok (default, recommended), 1 = OpenAI") },
+    title: "Generate AI image", description: "Generate billboard artwork from a prompt (recommended 640x373). Returns base64 data URIs you can pass to upload_media. Prefer realistic photos.",
+    inputSchema: { prompt: z.string().min(1).max(2000), width: z.number().int().optional(), height: z.number().int().optional(), aiProvider: z.number().int().optional().describe("Provider type from GET /global-config/all: 5 = Grok (default, recommended), 1 = OpenAI") },
 }, async ({ prompt, width, height, aiProvider }) => ok(await call("POST", "/ai/image", { body: { prompt, aiProvider: aiProvider ?? 5, width: width ?? 640, height: height ?? 373 } })));
 const chirpShape = {
-    text: z.string().optional(),
-    imageId: z.string().optional().describe("Blob id from upload_media (post-image)"),
+    text: z.string().optional(), imageId: z.string().optional().describe("Blob id from upload_media (post-image)"),
     videoId: z.string().optional().describe("Blob id from upload_media (post-video)"),
     parentPostId: z.string().uuid().optional().describe("Set to comment on an existing chirp"),
-    isActive: z.boolean().optional().default(true),
-    isMature: z.boolean().optional().default(false),
+    isActive: z.boolean().optional().default(true), isMature: z.boolean().optional().default(false),
 };
 server.registerTool("create_chirp", {
-    title: "Create chirp",
-    description: "Post a chirp (social post) on BillboardBug, e.g. announcing a new billboard. Returns the chirp id.",
-    inputSchema: chirpShape,
+    title: "Create chirp", description: "Post a chirp (social post) on BillboardBug, e.g. announcing a new billboard. Returns the chirp id.", inputSchema: chirpShape,
 }, async (a) => ok(await call("POST", "/posts", { body: { ...a, isActive: a.isActive ?? true, isMature: a.isMature ?? false } })));
 server.registerTool("update_chirp", {
-    title: "Update chirp",
-    description: "Edit an existing chirp you own.",
-    inputSchema: { id: z.string().uuid(), ...chirpShape },
+    title: "Update chirp", description: "Edit an existing chirp you own.", inputSchema: { id: z.string().uuid(), ...chirpShape },
 }, async ({ id, ...a }) => ok(await call("PUT", `/posts/${id}`, { body: { ...a, isActive: a.isActive ?? true, isMature: a.isMature ?? false } })));
 server.registerTool("get_chirp", {
-    title: "Get chirp (read-back)",
-    description: "Read a chirp back by id to verify it posted. Works without an API key.",
-    inputSchema: { id: z.string().uuid() },
-    annotations: { readOnlyHint: true },
+    title: "Get chirp (read-back)", description: "Read a chirp back by id to verify it posted. Works without an API key.", inputSchema: { id: z.string().uuid() }, annotations: { readOnlyHint: true },
 }, async ({ id }) => ok(await call("GET", `/posts/${id}`, { auth: "optional" })));
 await server.connect(new StdioServerTransport());
