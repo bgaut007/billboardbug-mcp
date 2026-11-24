@@ -22,7 +22,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm ci --ignore-scripts
       - run: npm run build
-      - run: node --test test/media-security.mjs
+      - run: node --test test/media-security.mjs test/upload-handler-security.mjs
       - name: Inspect package file list without publishing
         shell: bash
         run: |
