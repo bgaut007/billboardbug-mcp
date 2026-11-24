@@ -29,6 +29,9 @@ jobs:
           import { join } from 'node:path';
           const extracted = join(process.env.RUNNER_TEMP, 'bbb-bundle-extracted');
           const commands = [
+            ['resolve-zod', 'npm', ['install', '--package-lock-only', '--ignore-scripts', '--save-exact', 'zod@4.6.7', '--json']],
+            ['refresh-sdk', 'npm', ['update', '@modelcontextprotocol/sdk', '--package-lock-only', '--ignore-scripts', '--json']],
+            ['repair-audit', 'npm', ['audit', 'fix', '--package-lock-only', '--ignore-scripts', '--json']],
             ['install', 'npm', ['ci', '--ignore-scripts', '--json']],
             ['audit', 'npm', ['audit', '--json', '--audit-level=moderate', '--ignore-scripts']],
             ['build', 'npm', ['run', 'build']],
@@ -38,7 +41,7 @@ jobs:
             ['extracted-tests', 'node', ['--test', 'test/media-security.mjs', 'test/upload-handler-security.mjs']]
           ];
           const clean = value => String(value).replace(/[^a-zA-Z0-9@/._: ,()=-]/g, '_').slice(0, 180);
-          let report = { outcome: 'success', phase: 'all-phases', code: 'OK', detail: 'review-only' };
+          let report = { outcome: 'success', phase: 'all-phases', code: 'OK', detail: 'disposable-dependency-candidate' };
           for (const [phase, command, args] of commands) {
             if (phase === 'extracted-tests') {
               mkdirSync(join(extracted, 'test'));
@@ -53,8 +56,9 @@ jobs:
             const rawCode = data.error?.code || result.error?.code || '';
             const code = /^[A-Z][A-Z0-9_]{0,39}$/.test(rawCode) ? rawCode : `EXIT_${result.status ?? 'SIGNAL'}`;
             let detail = 'raw-output-not-exported';
-            if (phase === 'audit' && data.vulnerabilities) {
-              detail = Object.entries(data.vulnerabilities).filter(([, v]) => ['moderate', 'high', 'critical'].includes(v.severity)).map(([name, v]) => `${name}:${v.severity}:fix=${typeof v.fixAvailable === 'object' && v.fixAvailable ? `${v.fixAvailable.name}@${v.fixAvailable.version}` : v.fixAvailable ? 'available' : 'none'}`).join(', ');
+            const vulnerabilities = data.vulnerabilities || data.audit?.vulnerabilities;
+            if ((phase === 'audit' || phase === 'repair-audit') && vulnerabilities) {
+              detail = Object.entries(vulnerabilities).filter(([, v]) => ['moderate', 'high', 'critical'].includes(v.severity)).map(([name, v]) => `${name}:${v.severity}:fix=${typeof v.fixAvailable === 'object' && v.fixAvailable ? `${v.fixAvailable.name}@${v.fixAvailable.version}` : v.fixAvailable ? 'available' : 'none'}`).join(', ') || 'audit-repair-not-complete';
             } else if (phase === 'archive-inspection') {
               const errors = result.stderr || '';
               if (errors.includes('Credential signature requires review')) detail = 'credential-signature-match';
@@ -73,6 +77,14 @@ jobs:
           for (const [key, value] of Object.entries(report)) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${clean(value)}\n`);
           console.log(JSON.stringify(report, null, 2));
           NODE
+      - name: Upload fully validated disposable candidate for review only
+        if: steps.probe.outputs.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mcp-dependency-candidate-node-22
+          path: ${{ runner.temp }}/bbb-bundle-output/
+          retention-days: 7
+          if-no-files-found: error
   result:
     needs: probe
     name: 'Bundle probe / ${{ needs.probe.outputs.phase }} / ${{ needs.probe.outputs.code }} / ${{ needs.probe.outputs.detail }}'
