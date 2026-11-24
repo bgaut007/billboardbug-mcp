@@ -1,0 +1,35 @@
+{
+  "candidateOnly": true,
+  "published": false,
+  "validationBaseCommit": "e2953212b468e28c6c7dea20d586e8c75d1fa7e4",
+  "node": "v22.23.5",
+  "version": "1.0.1",
+  "archiveSha256": "4e4b38fd42b7a818f0a18a557db48074ea4ade83811905ede5f5b7e7269ead9d",
+  "archiveBytes": 5124916,
+  "archiveFileCount": 3588,
+  "committedFileHashes": {
+    "package.json": "b297be9d8b0bf25b192eecc98c58464e6dd778bf5a0c6ca77e6d50d20da88d11",
+    "package-lock.json": "97662a7fed13cc01cbbf8a71458f8f79a0f61fa412158efd656f9f2a05590f6f",
+    "build/index.js": "7a04253ddf53bac274c316e02461285dc3f5026abe5d73a1be52af3fd11fc691",
+    "build/media.js": "e79f7301837d075e85473b5abaa85d42c9f8953d6973680e5e4607ce4179553b"
+  },
+  "dependencies": {
+    "node_modules/@hono/node-server": "2.1.11",
+    "node_modules/@modelcontextprotocol/sdk": "1.32.2",
+    "node_modules/body-parser": "2.4.0",
+    "node_modules/fast-uri": "3.1.9",
+    "node_modules/hono": "4.13.21",
+    "node_modules/zod": "4.6.7"
+  },
+  "validated": [
+    "moderate-or-higher audit gate",
+    "TypeScript build",
+    "source helper and mocked upload tests",
+    "11 signature fixtures",
+    "archive structure and heuristic signature inspection",
+    "ZIP integrity and extraction",
+    "extracted helper and mocked upload tests"
+  ],
+  "limits": "Heuristic signature and path checks only, not a complete secret scan, formal schema validation, signature verification or desktop-host compatibility test. No release or registry metadata updated.",
+  "note": "Archive was generated in the validation workspace before this receipt commit. This is a candidate receipt, not release metadata, a new version, signature verification or desktop-host/production compatibility approval."
+}
