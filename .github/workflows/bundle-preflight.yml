@@ -1,0 +1,48 @@
+name: MCP bundle preflight
+on:
+  push:
+    branches: [release/mcp-bundle-validation-2026-11-24]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  bundle:
+    name: 'Bundle candidate / Node ${{ matrix.node }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts
+      - name: Audit build and runtime dependencies
+        run: npm audit --audit-level=moderate --ignore-scripts
+      - run: npm run build
+      - name: Source-tree offline regressions
+        run: node --test test/media-security.mjs test/upload-handler-security.mjs
+      - name: Retain production dependencies without lifecycle scripts
+        run: npm prune --omit=dev --ignore-scripts
+      - name: Build and inspect review-only bundle
+        run: python3 scripts/bundle-preflight.py
+      - name: Test extracted bundle with mocked networking
+        shell: bash
+        run: |
+          mkdir "$RUNNER_TEMP/bbb-bundle-extracted/test"
+          cp test/media-security.mjs test/upload-handler-security.mjs test/mock-upload-fetch.cjs "$RUNNER_TEMP/bbb-bundle-extracted/test/"
+          cd "$RUNNER_TEMP/bbb-bundle-extracted"
+          node --test test/media-security.mjs test/upload-handler-security.mjs
+      - name: Upload candidate bundle, inventory and checksum for review only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mcp-bundle-candidate-node-${{ matrix.node }}
+          path: ${{ runner.temp }}/bbb-bundle-output/
+          retention-days: 7
+          if-no-files-found: error
