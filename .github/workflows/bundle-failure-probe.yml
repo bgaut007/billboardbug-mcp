@@ -25,7 +25,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { spawnSync } from 'node:child_process';
-          import { appendFileSync, mkdirSync, copyFileSync } from 'node:fs';
+          import { appendFileSync, mkdirSync, copyFileSync, readFileSync } from 'node:fs';
           import { join } from 'node:path';
           const extracted = join(process.env.RUNNER_TEMP, 'bbb-bundle-extracted');
           const commands = [
@@ -45,9 +45,7 @@ jobs:
           for (const [phase, command, args] of commands) {
             if (phase === 'extracted-tests') {
               mkdirSync(join(extracted, 'test'));
-              for (const file of ['media-security.mjs', 'upload-handler-security.mjs', 'mock-upload-fetch.cjs']) {
-                copyFileSync(join('test', file), join(extracted, 'test', file));
-              }
+              for (const file of ['media-security.mjs', 'upload-handler-security.mjs', 'mock-upload-fetch.cjs']) copyFileSync(join('test', file), join(extracted, 'test', file));
             }
             const result = spawnSync(command, args, { cwd: phase === 'extracted-tests' ? extracted : process.cwd(), encoding: 'utf8', shell: false, timeout: 180000, maxBuffer: 8 * 1024 * 1024 });
             if (result.status === 0 && !result.error) continue;
@@ -61,7 +59,28 @@ jobs:
               detail = Object.entries(vulnerabilities).filter(([, v]) => ['moderate', 'high', 'critical'].includes(v.severity)).map(([name, v]) => `${name}:${v.severity}:fix=${typeof v.fixAvailable === 'object' && v.fixAvailable ? `${v.fixAvailable.name}@${v.fixAvailable.version}` : v.fixAvailable ? 'available' : 'none'}`).join(', ') || 'audit-repair-not-complete';
             } else if (phase === 'archive-inspection') {
               const errors = result.stderr || '';
-              if (errors.includes('Credential signature requires review')) detail = 'credential-signature-match';
+              const finding = errors.match(/AssertionError: Credential signature requires review: ([A-Za-z0-9@/._-]+)/);
+              if (finding && !finding[1].split('/').includes('..') && !finding[1].startsWith('/')) {
+                const path = finding[1];
+                const text = readFileSync(path, 'utf8');
+                const signatures = [
+                  ['private-key-header', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
+                  ['aws-key-id', /AKIA[0-9A-Z]{16}/],
+                  ['github-token', /gh[pousr]_[A-Za-z0-9]{30,}/],
+                  ['github-fine-grained-token', /github_pat_[A-Za-z0-9_]{30,}/],
+                  ['stripe-live-key', /sk_live_[A-Za-z0-9]{16,}/]
+                ];
+                const categories = signatures.filter(([, pattern]) => pattern.test(text)).map(([name]) => name).join(',');
+                const parts = path.split('/');
+                const index = parts.lastIndexOf('node_modules');
+                let dependency = 'project-file';
+                if (index >= 0) {
+                  const end = index + (parts[index + 1].startsWith('@') ? 3 : 2);
+                  const metadata = JSON.parse(readFileSync(join(...parts.slice(0, end), 'package.json'), 'utf8'));
+                  dependency = `${metadata.name}@${metadata.version}`;
+                }
+                detail = `${categories}:${dependency}:${path}`;
+              } else if (errors.includes('Credential signature requires review')) detail = 'credential-signature-match';
               else if (errors.includes('Sensitive-looking file rejected')) detail = 'sensitive-file-extension';
               else if (errors.includes('Symlink')) detail = 'symlink-rejected';
               else if (errors.includes('Missing required packaged file')) detail = 'required-package-file-missing';
