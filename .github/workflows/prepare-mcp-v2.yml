@@ -1,0 +1,96 @@
+name: Prepare unpublished MCP 2.0.0 candidate
+on:
+  push:
+    branches: [release/mcp-bundle-validation-2026-11-24]
+    paths: [.github/workflows/prepare-mcp-v2.yml]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    if: github.repository == 'bgaut007/billboardbug-mcp' && github.ref == 'refs/heads/release/mcp-bundle-validation-2026-11-24' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Prepare version and runtime metadata without creating a tag
+        shell: bash
+        run: |
+          node -e "if(require('./package.json').version !== '1.0.1') throw new Error('Unexpected starting version')"
+          npm version 2.0.0 --no-git-tag-version --ignore-scripts
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+          packageJson.engines.node = '>=20';
+          writeFileSync('package.json', JSON.stringify(packageJson, null, 2) + '\n');
+          const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+          assert.equal(manifest.version, '1.0.1');
+          manifest.version = '2.0.0';
+          manifest.compatibility.runtimes.node = '>=20.0.0';
+          writeFileSync('manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+          const path = 'src/index.ts';
+          const source = readFileSync(path, 'utf8');
+          const before = 'new McpServer({ name: "billboardbug", version: "1.0.1" }';
+          const after = 'new McpServer({ name: "billboardbug", version: "2.0.0" }';
+          assert.equal(source.split(before).length, 2);
+          writeFileSync(path, source.replace(before, after));
+          NODE
+          npm install --package-lock-only --ignore-scripts
+          npm audit --audit-level=moderate --ignore-scripts
+          npm ci --ignore-scripts --engine-strict
+      - run: npm run build
+      - run: node --test test/media-security.mjs test/upload-handler-security.mjs
+      - name: Create and inspect versioned candidate bundle
+        run: |
+          cp package-lock.json "$RUNNER_TEMP/bbb-full-lock.json"
+          npm prune --omit=dev --ignore-scripts
+          python3 scripts/bundle-preflight.py
+          mkdir "$RUNNER_TEMP/bbb-bundle-extracted/test"
+          cp test/media-security.mjs test/upload-handler-security.mjs test/mock-upload-fetch.cjs "$RUNNER_TEMP/bbb-bundle-extracted/test/"
+          cd "$RUNNER_TEMP/bbb-bundle-extracted"
+          node --test test/media-security.mjs test/upload-handler-security.mjs
+      - name: Restore full lockfile and record versioned candidate receipt
+        run: |
+          cp "$RUNNER_TEMP/bbb-full-lock.json" package-lock.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const inventory = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/bbb-bundle-output/inventory.json`, 'utf8'));
+          assert.equal(inventory.version, '2.0.0');
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          const names = ['@modelcontextprotocol/sdk', '@hono/node-server', 'body-parser', 'fast-uri', 'hono', 'zod'];
+          const dependencies = Object.fromEntries(Object.entries(lock.packages).filter(([path]) => names.some(name => path === `node_modules/${name}` || path.endsWith(`/node_modules/${name}`))).map(([path, metadata]) => [path, metadata.version]));
+          const paths = ['package.json', 'package-lock.json', 'manifest.json', 'src/index.ts', 'build/index.js', 'build/media.js'];
+          const hashes = Object.fromEntries(paths.map(path => [path, createHash('sha256').update(readFileSync(path)).digest('hex')]));
+          const receipt = { candidateOnly: true, published: false, validationBaseCommit: process.env.GITHUB_SHA, node: process.version, version: inventory.version, minimumNode: '20', archiveSha256: inventory.sha256, archiveBytes: inventory.archiveBytes, archiveFileCount: inventory.fileCount, committedFileHashes: hashes, dependencies, validated: ['moderate-or-higher audit gate', 'engine-strict Node 22 install', 'TypeScript build', 'source helper and mocked upload tests', '11 signature fixtures', 'archive structure and heuristic signature inspection', 'ZIP integrity and extraction', 'extracted helper and mocked upload tests'], limits: inventory.limits, note: 'Unpublished 2.0.0 candidate built in the validation workspace before this receipt commit. Fresh checks on the committed files and supported runtimes, final artifact review and separate merge/publication approvals are still required. Existing v1.0.1 release and server.json registry metadata were not changed.' };
+          writeFileSync('bundle-validation.json', JSON.stringify(receipt, null, 2) + '\n');
+          NODE
+      - name: Upload versioned candidate for review only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mcp-v2-candidate-node-22
+          path: ${{ runner.temp }}/bbb-bundle-output/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Commit only versioned candidate files to isolated branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          while IFS= read -r path; do
+            case "$path" in
+              package.json|package-lock.json|manifest.json|src/index.ts|build/index.js|build/media.js|bundle-validation.json) ;;
+              *) echo 'Unexpected tracked change; refusing to commit.'; exit 1 ;;
+            esac
+          done < <(git diff --name-only)
+          git add -- package.json package-lock.json manifest.json src/index.ts build/index.js build/media.js bundle-validation.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'release: prepare unpublished MCP 2.0.0 candidate for Node 20+'
+          git -c credential.helper= -c 'credential.helper=!f() { printf "%s\n" "username=x-access-token" "password=$GH_TOKEN"; }; f' push origin HEAD:refs/heads/release/mcp-bundle-validation-2026-11-24
