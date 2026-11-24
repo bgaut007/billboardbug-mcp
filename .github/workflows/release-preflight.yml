@@ -1,0 +1,47 @@
+name: MCP release preflight
+on:
+  push:
+    branches: [security/mcp-upload-hardening-2026-11-24]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  release-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: node --test test/media-security.mjs test/upload-handler-security.mjs
+      - name: Inspect package file list without publishing
+        shell: bash
+        run: |
+          npm pack --dry-run --ignore-scripts --json > "$RUNNER_TEMP/bbb-pack.json"
+          node --input-type=module - "$RUNNER_TEMP/bbb-pack.json" <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const packs = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+          assert.equal(packs.length, 1);
+          const pack = packs[0];
+          assert.equal(pack.name, 'billboardbug-mcp');
+          const files = pack.files.map(file => file.path);
+          for (const required of ['package.json', 'build/index.js', 'build/media.js', 'README.md', 'LICENSE']) {
+            assert(files.includes(required), `Missing packaged file: ${required}`);
+          }
+          for (const path of files) {
+            assert(!path.split('/').some(part => part.startsWith('.')), `Unexpected hidden package path: ${path}`);
+            assert(!/\.(pem|key|p12|pfx|enc)$/i.test(path), `Sensitive-looking package path: ${path}`);
+            assert(path === 'package.json' || path === 'README.md' || path === 'LICENSE' || path.startsWith('build/'), `Unexpected package path: ${path}`);
+          }
+          console.log(JSON.stringify({ name: pack.name, version: pack.version, files, note: 'File-list checks only; not a content secret scan. Nothing published.' }, null, 2));
+          NODE
