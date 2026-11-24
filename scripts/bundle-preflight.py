@@ -1,10 +1,11 @@
 import hashlib
 import json
 import os
-import re
 import zipfile
 from pathlib import Path
+from bundle_signatures import has_credential_signature, run_regression_tests
 
+print(f'Signature regression fixtures passed: {run_regression_tests()}')
 root = Path.cwd()
 output = Path(os.environ['RUNNER_TEMP']) / 'bbb-bundle-output'
 extracted = Path(os.environ['RUNNER_TEMP']) / 'bbb-bundle-extracted'
@@ -19,13 +20,6 @@ assert manifest['server']['mcp_config']['command'] == 'node'
 assert manifest['server']['mcp_config']['args'] == ['${__dirname}/build/index.js']
 assert manifest['user_config']['billboardbug_api_key']['sensitive'] is True
 assert manifest['server']['mcp_config']['env']['BILLBOARDBUG_API_KEY'] == '${user_config.billboardbug_api_key}'
-patterns = [
-    re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
-    re.compile(rb'AKIA[0-9A-Z]{16}'),
-    re.compile(rb'gh[pousr]_[A-Za-z0-9]{30,}'),
-    re.compile(rb'github_pat_[A-Za-z0-9_]{30,}'),
-    re.compile(rb'sk_live_[A-Za-z0-9]{16,}')
-]
 files = []
 for name in ['manifest.json', 'package.json', 'package-lock.json', 'README.md', 'LICENSE', 'build', 'node_modules']:
     source = root / name
@@ -43,7 +37,7 @@ for name in ['manifest.json', 'package.json', 'package-lock.json', 'README.md', 
         assert path.suffix.lower() not in ['.pem', '.key', '.p12', '.pfx'], f'Sensitive-looking file rejected: {relative}'
         assert path.stat().st_size <= 16 * 1024 * 1024, f'Oversized bundle file: {relative}'
         data = path.read_bytes()
-        assert not any(pattern.search(data) for pattern in patterns), f'Credential signature requires review: {relative}'
+        assert not has_credential_signature(data), f'Credential signature requires review: {relative}'
         files.append((relative.as_posix(), data))
 assert sum(len(data) for _, data in files) <= 64 * 1024 * 1024
 paths = [name for name, _ in files]
@@ -72,7 +66,7 @@ inventory = {
     'archiveBytes': archive.stat().st_size,
     'fileCount': len(files),
     'files': [{'path': name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()} for name, data in sorted(files)],
-    'limits': 'Signature and path checks only, not a complete secret scan, formal schema validation, signature verification or desktop-host compatibility test. No release or registry metadata updated.'
+    'limits': 'Heuristic signature and path checks only, not a complete secret scan, formal schema validation, signature verification or desktop-host compatibility test. No release or registry metadata updated.'
 }
 (output / 'inventory.json').write_text(json.dumps(inventory, indent=2) + '\n')
 print(json.dumps({key: value for key, value in inventory.items() if key != 'files'}, indent=2))
